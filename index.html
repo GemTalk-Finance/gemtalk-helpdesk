@@ -369,6 +369,7 @@ html,body{height:100%;font-family:var(--font);font-size:14px;color:var(--text);b
 <script src="api.js"></script>
 <script>
 const COLORS=['#4ade80','#60a5fa','#f472b6','#fb923c','#a78bfa','#34d399','#fbbf24','#f87171','#38bdf8','#c084fc'];
+const CACHE_VERSION='v2'; // bump this when backend response shape changes, to invalidate old cached tickets
 const S={filter:'all',tickets:[],selId:null,cache:{},newIds:{},knownIds:null,user:null,profColor:'#4a5070',pendingFiles:[],viewedIds:loadViewed()};
 
 function loadViewed(){
@@ -416,6 +417,7 @@ function loadUser(){
     const av=document.getElementById('hav');
     av.style.background=u.avatarColor||'#4a5070';
     av.textContent=initials(u.name||u.email);
+    if(S.tickets.length) renderList(); // re-render in case Mine/assignment depends on user identity
   }).catch(()=>{});
 }
 
@@ -494,10 +496,10 @@ function prefetchOne(id){
 /* ── DETAIL ── */
 async function selectTicket(id){
   S.selId=id; delete S.newIds[id]; markViewed(id); renderList();
-  if(S.cache[id]){renderDetail(S.cache[id]);return;}
+  if(S.cache[id] && S.cache[id]._cv===CACHE_VERSION){renderDetail(S.cache[id]);return;}
   document.getElementById('detail').innerHTML='<div class="empty-state"><div class="spinner"></div><div class="et" style="opacity:.5;margin-top:12px">Loading…</div></div>';
   const r=await api('getTicketDetail',{ticketId:id}).catch(()=>null);
-  if(r&&r.ticketId){const t=S.tickets.find(x=>x.ticketId===id);r._mc=t?t.messageCount:0;S.cache[id]=r;}
+  if(r&&r.ticketId){const t=S.tickets.find(x=>x.ticketId===id);r._mc=t?t.messageCount:0;r._cv=CACHE_VERSION;S.cache[id]=r;}
   if(S.selId===id) renderDetail(r);
 }
 
@@ -509,7 +511,8 @@ function renderDetail(d){
 
   let msgH='';
   if(!d.messages || !d.messages.length){
-    msgH='<div style="padding:16px;text-align:center;color:var(--subtle);font-size:13px;background:var(--bg-2);border:1px solid var(--border);border-radius:10px">No messages loaded for this ticket. Try clicking Sync, or open in Gmail to verify the thread still exists.</div>';
+    const dbg=d._debug?`<div style="margin-top:8px;font-family:monospace;font-size:11px;color:var(--danger);background:rgba(248,113,113,.08);padding:8px 10px;border-radius:6px;text-align:left">${esc(d._debug)}</div>`:'';
+    msgH=`<div style="padding:16px;text-align:center;color:var(--subtle);font-size:13px;background:var(--bg-2);border:1px solid var(--border);border-radius:10px">No messages loaded for this ticket. Try clicking Sync, or open in Gmail to verify the thread still exists.${dbg}</div>`;
   }
   (d.messages||[]).forEach((m,i)=>{
     const isLast=(i===d.messages.length-1);
@@ -537,7 +540,10 @@ function renderDetail(d){
           <div class="dsubj">${esc(d.subject)}</div>
           <div class="dfrom">From <strong>${esc(d.from)}</strong></div>
         </div>
-        ${d.gmailLink?`<a class="glink" href="${esc(d.gmailLink)}" target="_blank">Open in Gmail</a>`:''}
+        <div style="display:flex;gap:8px;flex-shrink:0">
+          <button class="glink" id="refreshTicketBtn" style="cursor:pointer">↻ Refresh</button>
+          ${d.gmailLink?`<a class="glink" href="${esc(d.gmailLink)}" target="_blank">Open in Gmail</a>`:''}
+        </div>
       </div>
     </div>
     <div class="controls">
@@ -571,6 +577,8 @@ function renderDetail(d){
   document.querySelectorAll('.fsel').forEach(s=>s.addEventListener('change',e=>updateField(e.target.dataset.f,e.target.value)));
   document.getElementById('notesEl').addEventListener('blur',e=>updateField('notes',e.target.value));
   document.getElementById('sendBtn').addEventListener('click',doSend);
+  const refreshBtn=document.getElementById('refreshTicketBtn');
+  if(refreshBtn) refreshBtn.addEventListener('click',()=>{delete S.cache[S.selId];selectTicket(S.selId);});
   document.getElementById('ccToggle').addEventListener('click',function(){
     const r=document.getElementById('ccRow'),v=r.style.display!=='none';
     r.style.display=v?'none':'flex';this.textContent=v?'+ CC':'− CC';
@@ -819,13 +827,15 @@ function injectIframes(messages){
 /* ── HELPERS ── */
 function filterTickets(tickets,f){
   const st=t=>(t.status||'').trim().toLowerCase();
-  if(f==='open')       return tickets.filter(t=>st(t)==='open');
-  if(f==='inprogress') return tickets.filter(t=>st(t)==='in progress');
-  if(f==='waiting')    return tickets.filter(t=>st(t)==='waiting on requester');
-  if(f==='resolved')   return tickets.filter(t=>st(t)==='resolved');
-  if(f==='closed')     return tickets.filter(t=>st(t)==='closed');
-  if(f==='mine')       return tickets.filter(t=>t.assignedTo&&t.assignedTo!=='Unassigned');
-  if(f==='unassigned') return tickets.filter(t=>!t.assignedTo||t.assignedTo==='Unassigned');
+  const myName=S.user?(S.user.name||S.user.email):null;
+  if(f==='all')         return tickets.filter(t=>st(t)!=='resolved'&&st(t)!=='closed');
+  if(f==='open')        return tickets.filter(t=>st(t)==='open');
+  if(f==='inprogress')  return tickets.filter(t=>st(t)==='in progress');
+  if(f==='waiting')     return tickets.filter(t=>st(t)==='waiting on requester');
+  if(f==='resolved')    return tickets.filter(t=>st(t)==='resolved');
+  if(f==='closed')      return tickets.filter(t=>st(t)==='closed');
+  if(f==='mine')        return tickets.filter(t=>myName&&t.assignedTo===myName);
+  if(f==='unassigned')  return tickets.filter(t=>(!t.assignedTo||t.assignedTo==='Unassigned')&&st(t)!=='closed');
   return tickets;
 }
 function updateCounts(){
