@@ -298,6 +298,10 @@ html,body{height:100%;font-family:var(--font);font-size:14px;color:var(--text);b
     <div class="fdiv"></div>
     <button class="ftab" data-f="mine"><span>Mine</span><span class="tcnt" id="c-mine">0</span></button>
     <button class="ftab" data-f="unassigned"><span>Unassigned</span><span class="tcnt" id="c-unassigned">0</span></button>
+    <div class="fdiv" id="agentFilterDiv" style="display:none"></div>
+    <select id="agentFilterSelect" style="display:none;background:transparent;border:none;color:var(--muted);font-size:12px;font-family:var(--font);cursor:pointer;outline:none;padding:0 8px;align-self:center">
+      <option value="">Filter by agent…</option>
+    </select>
   </div>
 
   <div class="layout">
@@ -370,7 +374,7 @@ html,body{height:100%;font-family:var(--font);font-size:14px;color:var(--text);b
 <script>
 const COLORS=['#4ade80','#60a5fa','#f472b6','#fb923c','#a78bfa','#34d399','#fbbf24','#f87171','#38bdf8','#c084fc'];
 const CACHE_VERSION='v2'; // bump this when backend response shape changes, to invalidate old cached tickets
-const S={filter:'all',tickets:[],selId:null,cache:{},newIds:{},knownIds:null,user:null,profColor:'#4a5070',pendingFiles:[],viewedIds:loadViewed()};
+const S={filter:'all',agentFilter:'',tickets:[],selId:null,cache:{},newIds:{},knownIds:null,user:null,profColor:'#4a5070',pendingFiles:[],viewedIds:loadViewed()};
 
 function loadViewed(){
   try{return JSON.parse(localStorage.getItem('gfhd_viewed')||'{}');}catch(e){return {};}
@@ -385,8 +389,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(!requireAuth()) return;
   loadUser();
   loadTickets();
-  setInterval(loadTickets,30000);
-  setInterval(doAutoSync,60000);
+  setInterval(loadTickets,30000); // just refreshes the list from the sheet, no Gmail calls
 
   document.querySelectorAll('.ftab').forEach(b=>b.addEventListener('click',e=>{
     document.querySelectorAll('.ftab').forEach(t=>t.classList.remove('active'));
@@ -407,6 +410,25 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 
 /* ── USER ── */
+let agentFilterReady=false;
+async function setupAgentFilter(){
+  if(agentFilterReady) return;
+  agentFilterReady=true;
+  const r=await api('getUsers').catch(()=>null);
+  const users=(r&&r.success?r.users:[]).filter(u=>u.status==='Active');
+  const sel=document.getElementById('agentFilterSelect');
+  const div=document.getElementById('agentFilterDiv');
+  if(!sel||!users.length) return;
+  sel.innerHTML='<option value="">Filter by agent…</option>'+
+    users.map(u=>`<option value="${esc(u.name||u.email)}">${esc(u.name||u.email)}</option>`).join('');
+  sel.style.display='inline-block';
+  div.style.display='block';
+  sel.addEventListener('change',e=>{
+    S.agentFilter=e.target.value;
+    renderList();
+  });
+}
+
 function loadUser(){
   api('getCurrentUser').then(r=>{
     if(!r||!r.success) return;
@@ -418,6 +440,7 @@ function loadUser(){
     av.style.background=u.avatarColor||'#4a5070';
     av.textContent=initials(u.name||u.email);
     if(S.tickets.length) renderList(); // re-render in case Mine/assignment depends on user identity
+    if(u.role==='Admin') setupAgentFilter();
   }).catch(()=>{});
 }
 
@@ -436,7 +459,7 @@ async function loadTickets(){
   tickets.forEach(t=>{ S.knownIds[t.ticketId]=true; });
   tickets.forEach(t=>{ const c=S.cache[t.ticketId]; if(c&&c._mc!==t.messageCount) delete S.cache[t.ticketId]; });
   renderList();
-  prefetchVisible();
+  // Prefetching removed to conserve Gmail API quota — tickets now fetch on-demand when clicked
 }
 
 function prefetchVisible(){
@@ -451,7 +474,8 @@ function prefetchVisible(){
 /* ── LIST ── */
 function renderList(){
   updateSubtitle(); updateCounts();
-  const tickets=filterTickets(S.tickets,S.filter);
+  let tickets=filterTickets(S.tickets,S.filter);
+  if(S.agentFilter) tickets=tickets.filter(t=>t.assignedTo===S.agentFilter);
   const el=document.getElementById('sidebar');
   if(!tickets.length){el.innerHTML='<div class="empty">No tickets match this filter</div>';return;}
   const open=[],closed=[];
@@ -462,7 +486,7 @@ function renderList(){
   el.innerHTML=h;
   el.querySelectorAll('.titem').forEach(el=>{
     el.addEventListener('click',e=>selectTicket(e.currentTarget.dataset.id));
-    el.addEventListener('mouseenter',e=>{const id=e.currentTarget.dataset.id;if(!S.cache[id])prefetchOne(id);});
+    // Hover-prefetch removed to conserve Gmail quota — ticket loads only on actual click now
   });
 }
 
@@ -834,14 +858,16 @@ function filterTickets(tickets,f){
   if(f==='waiting')     return tickets.filter(t=>st(t)==='waiting on requester');
   if(f==='resolved')    return tickets.filter(t=>st(t)==='resolved');
   if(f==='closed')      return tickets.filter(t=>st(t)==='closed');
-  if(f==='mine')        return tickets.filter(t=>myName&&t.assignedTo===myName);
+  if(f==='mine')        return tickets.filter(t=>myName&&t.assignedTo===myName&&st(t)!=='closed');
   if(f==='unassigned')  return tickets.filter(t=>(!t.assignedTo||t.assignedTo==='Unassigned')&&st(t)!=='closed');
   return tickets;
 }
 function updateCounts(){
   ['all','open','inprogress','waiting','resolved','closed','mine','unassigned'].forEach(f=>{
     const el=document.getElementById('c-'+f);
-    if(el) el.textContent=filterTickets(S.tickets,f).length;
+    let t=filterTickets(S.tickets,f);
+    if(S.agentFilter) t=t.filter(x=>x.assignedTo===S.agentFilter);
+    if(el) el.textContent=t.length;
   });
 }
 function updateSubtitle(){
