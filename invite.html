@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Accept invite — GemTalk Finance Help Desk</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#08090c;--surface:#141620;
+  --border:rgba(100,120,255,0.12);--border-focus:rgba(124,143,252,0.5);
+  --text:#eef0f8;--muted:#8890b0;--subtle:#4a5070;
+  --accent:#7c8ffc;--gem:#3dd6f5;
+  --danger:#f87171;--danger-bg:rgba(248,113,113,0.1);
+  --success:#4ade80;--success-bg:rgba(74,222,128,0.1);
+  --font:'DM Sans',system-ui,sans-serif;
+  --display:'Syne',system-ui,sans-serif;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);-webkit-font-smoothing:antialiased}
+body{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+.card{width:100%;max-width:420px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:40px 36px;box-shadow:0 24px 64px rgba(0,0,10,0.6)}
+.logo{display:flex;align-items:center;gap:12px;margin-bottom:32px}
+.gem-icon{width:40px;height:40px;background:linear-gradient(135deg,#3dd6f5,#7c8ffc);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.brand-text h1{font-family:var(--display);font-size:15px;font-weight:700;color:var(--text)}
+.brand-text p{font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--gem);margin-top:2px}
+h2{font-family:var(--display);font-size:22px;font-weight:700;margin-bottom:6px;letter-spacing:-0.01em}
+.sub{font-size:13px;color:var(--muted);margin-bottom:28px}
+.field{margin-bottom:16px}
+label{display:block;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--subtle);margin-bottom:7px;font-family:var(--display)}
+input{width:100%;padding:11px 14px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font);font-size:14px;transition:border-color 0.15s;outline:none}
+input:focus{border-color:var(--border-focus);background:rgba(255,255,255,0.07)}
+input::placeholder{color:var(--subtle)}
+input:read-only{opacity:0.6;cursor:not-allowed}
+.password-wrap{position:relative}
+.toggle-pw{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--subtle);padding:4px;font-size:16px;line-height:1}
+.hint{font-size:11px;color:var(--subtle);margin-top:5px}
+.error-box{background:var(--danger-bg);border:1px solid rgba(248,113,113,0.25);border-radius:8px;padding:11px 14px;font-size:13px;color:var(--danger);margin-bottom:16px;display:none}
+.error-box.show{display:block}
+.success-box{background:var(--success-bg);border:1px solid rgba(74,222,128,0.25);border-radius:8px;padding:11px 14px;font-size:13px;color:var(--success);margin-bottom:16px;display:none}
+.success-box.show{display:block}
+.btn{width:100%;padding:13px;background:linear-gradient(135deg,var(--accent),var(--gem));color:#0a0a14;font-family:var(--display);font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;border:none;border-radius:8px;cursor:pointer;transition:filter 0.15s;margin-top:4px}
+.btn:hover:not(:disabled){filter:brightness(1.1)}
+.btn:disabled{opacity:0.5;cursor:wait}
+.invalid-state{text-align:center;padding:40px 0}
+.invalid-state h2{font-family:var(--display);font-size:20px;margin-bottom:8px;color:var(--danger)}
+.invalid-state p{font-size:13px;color:var(--muted)}
+.loading{text-align:center;padding:40px 0;color:var(--muted);font-size:14px}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="card" id="card">
+  <div class="loading">Verifying your invite link…</div>
+</div>
+
+<script src="api.js"></script>
+<script>
+(function() {
+  const card   = document.getElementById('card');
+  const params = new URLSearchParams(location.search);
+  const token  = params.get('token');
+
+  if (!token) {
+    card.innerHTML = '<div class="invalid-state"><h2>Invalid link</h2><p>This invite link is missing a token. Contact your admin for a new one.</p></div>';
+    return;
+  }
+
+  function renderForm(data) {
+    card.innerHTML = `
+      <div class="logo">
+        <div class="gem-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <path d="M6 3L2 9l10 12L22 9l-4-6H6z" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/>
+            <path d="M2 9h20M6 3l3 6M18 3l-3 6M12 21L8.5 9M12 21l3.5-12" stroke="rgba(255,255,255,0.5)" stroke-width="1.2" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>GemTalk Systems LLC</h1>
+          <p>Finance Help Desk</p>
+        </div>
+      </div>
+      <h2>Set up your account</h2>
+      <p class="sub">You've been invited as <strong style="color:var(--accent)">${data.role}</strong>. Set a password to get started.</p>
+      <div class="error-box" id="errBox"></div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" value="${data.email}" readonly />
+      </div>
+      <div class="field">
+        <label>Your name</label>
+        <input type="text" id="nameEl" placeholder="Full name" value="${data.name || ''}" />
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <div class="password-wrap">
+          <input type="password" id="pw1" placeholder="At least 8 characters" />
+          <button class="toggle-pw" type="button" id="togglePw1">👁</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Confirm password</label>
+        <div class="password-wrap">
+          <input type="password" id="pw2" placeholder="Repeat password" />
+          <button class="toggle-pw" type="button" id="togglePw2">👁</button>
+        </div>
+        <p class="hint">Must be at least 8 characters</p>
+      </div>
+      <button class="btn" id="acceptBtn" type="button">Create account &amp; sign in</button>`;
+
+    document.getElementById('togglePw1').addEventListener('click', function() {
+      const el = document.getElementById('pw1');
+      el.type = el.type === 'password' ? 'text' : 'password';
+    });
+    document.getElementById('togglePw2').addEventListener('click', function() {
+      const el = document.getElementById('pw2');
+      el.type = el.type === 'password' ? 'text' : 'password';
+    });
+
+    document.getElementById('acceptBtn').addEventListener('click', async function() {
+      const errBox = document.getElementById('errBox');
+      const name   = document.getElementById('nameEl').value.trim();
+      const pw1    = document.getElementById('pw1').value;
+      const pw2    = document.getElementById('pw2').value;
+      const btn    = document.getElementById('acceptBtn');
+
+      errBox.classList.remove('show');
+      if (!name)          { errBox.textContent = 'Please enter your name.'; errBox.classList.add('show'); return; }
+      if (pw1.length < 8) { errBox.textContent = 'Password must be at least 8 characters.'; errBox.classList.add('show'); return; }
+      if (pw1 !== pw2)    { errBox.textContent = 'Passwords do not match.'; errBox.classList.add('show'); return; }
+
+      btn.disabled = true; btn.textContent = 'Creating account…';
+      try {
+        const res = await api('acceptInvite', { inviteToken: token, password: pw1, name });
+        if (res && res.success) {
+          setSession({ token: res.token, expires: res.expires, user: res.user });
+          window.location.href = '/index.html';
+        } else {
+          errBox.textContent = (res && res.error) || 'Something went wrong. Try again.';
+          errBox.classList.add('show');
+          btn.disabled = false; btn.textContent = 'Create account & sign in';
+        }
+      } catch(e) {
+        errBox.textContent = 'Connection error. Please try again.';
+        errBox.classList.add('show');
+        btn.disabled = false; btn.textContent = 'Create account & sign in';
+      }
+    });
+  }
+
+  // Verify token first
+  api('checkInvite', { inviteToken: token }).then(function(res) {
+    if (res && res.success) {
+      renderForm(res);
+    } else {
+      card.innerHTML = '<div class="invalid-state"><h2>Link invalid or expired</h2><p>' + ((res && res.error) || 'This invite link has already been used or has expired.') + ' Contact your admin for a new one.</p></div>';
+    }
+  }).catch(function() {
+    card.innerHTML = '<div class="invalid-state"><h2>Connection error</h2><p>Could not verify your invite link. Check your internet connection and try again.</p></div>';
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in — GemTalk Finance Help Desk</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#08090c;--surface:#141620;--surface-2:#1e2030;
+  --border:rgba(100,120,255,0.12);--border-focus:rgba(124,143,252,0.5);
+  --text:#eef0f8;--muted:#8890b0;--subtle:#4a5070;
+  --accent:#7c8ffc;--gem:#3dd6f5;
+  --danger:#f87171;--danger-bg:rgba(248,113,113,0.1);
+  --success:#4ade80;--success-bg:rgba(74,222,128,0.1);
+  --font:'DM Sans',system-ui,sans-serif;
+  --display:'Syne',system-ui,sans-serif;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);-webkit-font-smoothing:antialiased}
+body{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+.card{width:100%;max-width:400px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:40px 36px;box-shadow:0 24px 64px rgba(0,0,10,0.6)}
+.logo{display:flex;align-items:center;gap:12px;margin-bottom:32px}
+.gem-icon{width:40px;height:40px;background:linear-gradient(135deg,#3dd6f5,#7c8ffc);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.brand-text h1{font-family:var(--display);font-size:15px;font-weight:700;color:var(--text)}
+.brand-text p{font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--gem);margin-top:2px}
+h2{font-family:var(--display);font-size:22px;font-weight:700;margin-bottom:6px;letter-spacing:-0.01em}
+.sub{font-size:13px;color:var(--muted);margin-bottom:28px}
+.field{margin-bottom:16px}
+label{display:block;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--subtle);margin-bottom:7px;font-family:var(--display)}
+input{width:100%;padding:11px 14px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font);font-size:14px;transition:border-color 0.15s;outline:none}
+input:focus{border-color:var(--border-focus);background:rgba(255,255,255,0.07)}
+input::placeholder{color:var(--subtle)}
+.password-wrap{position:relative}
+.toggle-pw{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--subtle);padding:4px;font-size:16px;line-height:1}
+.toggle-pw:hover{color:var(--muted)}
+.error-box{background:var(--danger-bg);border:1px solid rgba(248,113,113,0.25);border-radius:8px;padding:11px 14px;font-size:13px;color:var(--danger);margin-bottom:16px;display:none}
+.error-box.show{display:block}
+.btn{width:100%;padding:13px;background:linear-gradient(135deg,var(--accent),var(--gem));color:#0a0a14;font-family:var(--display);font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;border:none;border-radius:8px;cursor:pointer;transition:filter 0.15s;margin-top:4px}
+.btn:hover:not(:disabled){filter:brightness(1.1)}
+.btn:disabled{opacity:0.5;cursor:wait}
+.footer{text-align:center;margin-top:24px;font-size:12px;color:var(--subtle)}
+.session-note{background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.25);border-radius:8px;padding:10px 14px;font-size:12px;color:#fbbf24;margin-bottom:16px;display:none}
+.session-note.show{display:block}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <div class="gem-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <path d="M6 3L2 9l10 12L22 9l-4-6H6z" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/>
+        <path d="M2 9h20M6 3l3 6M18 3l-3 6M12 21L8.5 9M12 21l3.5-12" stroke="rgba(255,255,255,0.5)" stroke-width="1.2" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="brand-text">
+      <h1>GemTalk Systems LLC</h1>
+      <p>Finance Help Desk</p>
+    </div>
+  </div>
+
+  <h2>Sign in</h2>
+  <p class="sub">Enter your credentials to access the help desk</p>
+
+  <div class="session-note" id="sessionNote"></div>
+  <div class="error-box" id="errorBox"></div>
+
+  <div class="field">
+    <label>Email address</label>
+    <input type="email" id="email" placeholder="you@example.com" autocomplete="email" />
+  </div>
+  <div class="field">
+    <label>Password</label>
+    <div class="password-wrap">
+      <input type="password" id="password" placeholder="Your password" autocomplete="current-password" />
+      <button class="toggle-pw" type="button" id="togglePw" aria-label="Show password">👁</button>
+    </div>
+  </div>
+
+  <button class="btn" id="loginBtn" type="button">Sign in</button>
+
+  <p class="footer">Contact your admin if you don't have an account</p>
+</div>
+
+<script src="api.js"></script>
+<script>
+(function() {
+  // Show reason note if redirected
+  const params = new URLSearchParams(location.search);
+  const note   = document.getElementById('sessionNote');
+  if (params.get('reason') === 'expired') {
+    note.textContent = 'Your session expired. Please sign in again.';
+    note.classList.add('show');
+  }
+
+  // If already logged in, go to app
+  if (getToken()) window.location.href = '/index.html';
+
+  const emailEl = document.getElementById('email');
+  const pwEl    = document.getElementById('password');
+  const btn     = document.getElementById('loginBtn');
+  const errBox  = document.getElementById('errorBox');
+
+  document.getElementById('togglePw').addEventListener('click', function() {
+    pwEl.type = pwEl.type === 'password' ? 'text' : 'password';
+  });
+
+  function showError(msg) {
+    errBox.textContent = msg;
+    errBox.classList.add('show');
+  }
+  function hideError() { errBox.classList.remove('show'); }
+
+  async function doLogin() {
+    hideError();
+    const email    = emailEl.value.trim();
+    const password = pwEl.value;
+    if (!email || !password) { showError('Please enter your email and password.'); return; }
+
+    btn.disabled    = true;
+    btn.textContent = 'Signing in…';
+    try {
+      const res = await api('login', { email, password });
+      if (res && res.success) {
+        setSession({ token: res.token, expires: res.expires, user: res.user });
+        window.location.href = '/index.html';
+      } else {
+        showError((res && res.error) || 'Sign in failed. Check your credentials.');
+      }
+    } catch(e) {
+      showError('Connection error. Please try again.');
+    } finally {
+      btn.disabled    = false;
+      btn.textContent = 'Sign in';
+    }
+  }
+
+  btn.addEventListener('click', doLogin);
+  [emailEl, pwEl].forEach(function(el) {
+    el.addEventListener('keydown', function(e) { if (e.key === 'Enter') doLogin(); });
+  });
+})();
+</script>
+</body>
+</html>
