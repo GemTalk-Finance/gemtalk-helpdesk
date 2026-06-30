@@ -3,7 +3,7 @@
    Sets APP_URL once; all pages import this file
 ───────────────────────────────────────────── */
 
-const APP_URL = 'https://script.google.com/macros/s/AKfycbww2ODuhiOoMT5zXH_em8rzDJsxCkQ1xwQm3EU6sfjlr6iP4Hsu9Bl-DDXsqCNiIKO2sw/exec';
+const APP_URL = 'https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec';
 // Replace YOUR_DEPLOYMENT_ID with your actual Apps Script deployment ID
 
 const SESSION_KEY = 'gfhd_session';
@@ -35,7 +35,7 @@ async function api(action, payload = {}) {
 
   if (data.code === 401) {
     clearSession();
-    window.location.href = '/login.html?reason=expired';
+    window.location.href = 'login.html?reason=expired';
     return;
   }
   return data;
@@ -44,12 +44,12 @@ async function api(action, payload = {}) {
 function requireAuth() {
   const s = getSession();
   if (!s || !s.token) {
-    window.location.href = '/login.html';
+    window.location.href = 'login.html';
     return null;
   }
   if (s.expires && new Date(s.expires) < new Date()) {
     clearSession();
-    window.location.href = '/login.html?reason=expired';
+    window.location.href = 'login.html?reason=expired';
     return null;
   }
   return s;

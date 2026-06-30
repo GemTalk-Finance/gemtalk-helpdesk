@@ -134,7 +134,7 @@ input:read-only{opacity:0.6;cursor:not-allowed}
         const res = await api('acceptInvite', { inviteToken: token, password: pw1, name });
         if (res && res.success) {
           setSession({ token: res.token, expires: res.expires, user: res.user });
-          window.location.href = '/index.html';
+          window.location.href = 'index.html';
         } else {
           errBox.textContent = (res && res.error) || 'Something went wrong. Try again.';
           errBox.classList.add('show');

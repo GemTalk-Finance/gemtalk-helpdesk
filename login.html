@@ -95,7 +95,7 @@ input::placeholder{color:var(--subtle)}
   }
 
   // If already logged in, go to app
-  if (getToken()) window.location.href = '/index.html';
+  if (getToken()) window.location.href = 'index.html';
 
   const emailEl = document.getElementById('email');
   const pwEl    = document.getElementById('password');
@@ -124,7 +124,7 @@ input::placeholder{color:var(--subtle)}
       const res = await api('login', { email, password });
       if (res && res.success) {
         setSession({ token: res.token, expires: res.expires, user: res.user });
-        window.location.href = '/index.html';
+        window.location.href = 'index.html';
       } else {
         showError((res && res.error) || 'Sign in failed. Check your credentials.');
       }
