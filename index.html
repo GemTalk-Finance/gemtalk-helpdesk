@@ -373,7 +373,7 @@ html,body{height:100%;font-family:var(--font);font-size:14px;color:var(--text);b
 <script src="api.js"></script>
 <script>
 const COLORS=['#4ade80','#60a5fa','#f472b6','#fb923c','#a78bfa','#34d399','#fbbf24','#f87171','#38bdf8','#c084fc'];
-const CACHE_VERSION='v4'; // bumped to force refetch after inline image base64 fix
+const CACHE_VERSION='v5'; // bumped to force refetch after inline image base64 fix
 const S={filter:'all',agentFilter:'',tickets:[],selId:null,cache:{},newIds:{},knownIds:null,user:null,profColor:'#4a5070',pendingFiles:[],viewedIds:loadViewed()};
 
 function loadViewed(){
@@ -903,7 +903,13 @@ function fsel(field,label,cur,opts){
 }
 function renderAtts(atts){
   if(!atts||!atts.length) return '';
-  const items=atts.map(a=>`<a href="${esc(a.url)}" target="_blank" class="att"><div class="aico ${attCls(a.name)}">${attTxt(a.name)}</div><div class="att-info"><div class="aname">${esc(a.name)}</div><div class="ameta">${fmtSize(a.size)}</div></div></a>`).join('');
+  const items=atts.map(a=>{
+    const isData=a.url&&a.url.startsWith('data:');
+    const linkAttrs=isData
+      ? `href="${esc(a.url)}" download="${esc(a.name)}"`
+      : `href="${esc(a.url)}" target="_blank"`;
+    return `<a ${linkAttrs} class="att"><div class="aico ${attCls(a.name)}">${attTxt(a.name)}</div><div class="att-info"><div class="aname">${esc(a.name)}</div><div class="ameta">${fmtSize(a.size)}</div></div></a>`;
+  }).join('');
   return `<div class="slbl">Attachments<span class="slbl-cnt">${atts.length}</span></div><div class="atts-wrap"><div class="atts">${items}</div></div>`;
 }
 function attCls(n){const e=(n||'').split('.').pop().toLowerCase();return e==='pdf'?'apdf':['jpg','jpeg','png','gif','webp'].includes(e)?'aimg':['xlsx','xls','csv'].includes(e)?'axls':['docx','doc'].includes(e)?'adoc':'afile';}
