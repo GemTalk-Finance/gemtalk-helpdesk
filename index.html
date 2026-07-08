@@ -546,12 +546,17 @@ function renderDetail(d){
       <div class="mhdr">
         <div class="mfrom-wrap">${avHtml(shortFrom(m.from),false)}
           <div><div class="mfrom">${esc(shortFrom(m.from))}</div>${m.to?`<div class="mto">To: <strong>${esc(m.to)}</strong></div>`:''}</div>
+          ${m.cc?`<div class="mto">CC: <strong>${esc(m.cc)}</strong></div>`:''}
         </div>
         <div class="mhdr-r"><span class="mdbadge ${isSent?'sent':'rec'}">${isSent?'↑ Sent':'↓ Received'}</span><span class="mdate">${new Date(m.date).toLocaleString()}</span></div>
       </div>
       <div class="miframe-wrap" id="mb${i}"><div style="padding:10px;color:#888;font-size:12px">Loading…</div></div>
     </div>`;
   });
+
+  // Auto-populate CC from the last message's CC field
+  const lastMsg=(d.messages&&d.messages.length>0)?d.messages[d.messages.length-1]:null;
+  const defaultCc=(lastMsg&&lastMsg.cc)?lastMsg.cc:'';
 
   const attH=renderAtts(d.attachments);
 
@@ -584,8 +589,8 @@ function renderDetail(d){
     <div class="slbl">Reply to sender</div>
     <div class="reply-wrap">
       <div class="rfields">
-        <div class="rfrow"><span class="rflbl">To</span><input type="text" class="rfinp" id="rTo" value="${esc(extractEmail(d.from))}"/><button class="cctoggle" id="ccToggle">+ CC</button></div>
-        <div class="rfrow" id="ccRow" style="display:none"><span class="rflbl">CC</span><input type="text" class="rfinp" id="rCc" placeholder="cc@example.com"/></div>
+        <div class="rfrow"><span class="rflbl">To</span><input type="text" class="rfinp" id="rTo" value="${esc(extractEmail(d.from))}"/><button class="cctoggle" id="ccToggle">${defaultCc?'− CC':'+ CC'}</button></div>
+        <div class="rfrow" id="ccRow" style="${defaultCc?'display:flex':'display:none'}"><span class="rflbl">CC</span><input type="text" class="rfinp" id="rCc" placeholder="cc@example.com" value="${esc(defaultCc)}"/></div>
       </div>
       <textarea class="reply" id="replyEl" placeholder="Write your reply…"></textarea>
       <div class="azone" id="azone"><div class="azone-ico"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg></div><div class="azone-txt"><strong>Drop files here</strong> or click to attach</div></div>
