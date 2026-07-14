@@ -3,7 +3,7 @@
    Sets APP_URL once; all pages import this file
 ───────────────────────────────────────────── */
 
-const APP_URL = 'https://script.google.com/macros/s/AKfycbwZg9vxors7cWVBGfluA6MtXvRSuTdwUt4kt51daYRXTEIWQfXZBNvMkoxE-Q1AZphn/exec';
+const APP_URL = 'https://script.google.com/macros/s/AKfycbyq-c_Ga558D_tnMeQ2AR7eEZACPbGbuCavZEdT9o41nCDaR5ONg3QzjdLk1jpOWgrgQg/exec';
 // Replace YOUR_DEPLOYMENT_ID with your actual Apps Script deployment ID
 
 const SESSION_KEY = 'gfhd_session';
