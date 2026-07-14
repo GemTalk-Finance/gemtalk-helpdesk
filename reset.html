@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sign in — GemTalk Finance Help Desk</title>
+<title>Reset Password — GemTalk Finance Help Desk</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -35,12 +35,12 @@ input::placeholder{color:var(--subtle)}
 .toggle-pw:hover{color:var(--muted)}
 .error-box{background:var(--danger-bg);border:1px solid rgba(248,113,113,0.25);border-radius:8px;padding:11px 14px;font-size:13px;color:var(--danger);margin-bottom:16px;display:none}
 .error-box.show{display:block}
+.success-box{background:var(--success-bg);border:1px solid rgba(74,222,128,0.25);border-radius:8px;padding:11px 14px;font-size:13px;color:var(--success);margin-bottom:16px;display:none}
+.success-box.show{display:block}
 .btn{width:100%;padding:13px;background:linear-gradient(135deg,var(--accent),var(--gem));color:#0a0a14;font-family:var(--display);font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;border:none;border-radius:8px;cursor:pointer;transition:filter 0.15s;margin-top:4px}
 .btn:hover:not(:disabled){filter:brightness(1.1)}
 .btn:disabled{opacity:0.5;cursor:wait}
 .footer{text-align:center;margin-top:24px;font-size:12px;color:var(--subtle)}
-.session-note{background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.25);border-radius:8px;padding:10px 14px;font-size:12px;color:#fbbf24;margin-bottom:16px;display:none}
-.session-note.show{display:block}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
@@ -57,88 +57,116 @@ input::placeholder{color:var(--subtle)}
     </div>
   </div>
 
-  <h2>Sign in</h2>
-  <p class="sub">Enter your credentials to access the help desk</p>
-
-  <div class="session-note" id="sessionNote"></div>
-  <div class="error-box" id="errorBox"></div>
-
-  <div class="field">
-    <label>Email address</label>
-    <input type="email" id="email" placeholder="you@example.com" autocomplete="email" />
-  </div>
-  <div class="field">
-    <label>Password</label>
-    <div class="password-wrap">
-      <input type="password" id="password" placeholder="Your password" autocomplete="current-password" />
-      <button class="toggle-pw" type="button" id="togglePw" aria-label="Show password">👁</button>
+  <div id="requestView">
+    <h2>Forgot password?</h2>
+    <p class="sub">Enter your email and we'll send you a reset link.</p>
+    <div class="error-box" id="reqError"></div>
+    <div class="success-box" id="reqSuccess"></div>
+    <div class="field">
+      <label>Email address</label>
+      <input type="email" id="reqEmail" placeholder="you@example.com" autocomplete="email"/>
     </div>
+    <button class="btn" id="reqBtn" type="button">Send reset link</button>
+    <p class="footer"><a href="login.html" style="color:var(--accent);text-decoration:none">← Back to sign in</a></p>
   </div>
 
-  <button class="btn" id="loginBtn" type="button">Sign in</button>
-
-  <p class="footer">
-    <a href="reset.html" style="color:var(--accent);text-decoration:none">Forgot password?</a>
-    &nbsp;&nbsp;·&nbsp;&nbsp;Contact your admin if you don't have an account
-  </p>
+  <div id="resetView" style="display:none">
+    <h2>Set new password</h2>
+    <p class="sub">Choose a strong password (min 8 characters).</p>
+    <div class="error-box" id="resetError"></div>
+    <div class="success-box" id="resetSuccess"></div>
+    <div class="field">
+      <label>New password</label>
+      <div class="password-wrap">
+        <input type="password" id="pw1" placeholder="New password" autocomplete="new-password"/>
+        <button class="toggle-pw" type="button" id="togglePw1">👁</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>Confirm password</label>
+      <div class="password-wrap">
+        <input type="password" id="pw2" placeholder="Confirm password" autocomplete="new-password"/>
+        <button class="toggle-pw" type="button" id="togglePw2">👁</button>
+      </div>
+    </div>
+    <button class="btn" id="resetBtn" type="button">Set new password</button>
+    <p class="footer"><a href="login.html" style="color:var(--accent);text-decoration:none">← Back to sign in</a></p>
+  </div>
 </div>
 
 <script src="api.js"></script>
 <script>
 (function() {
-  // Show reason note if redirected
-  const params = new URLSearchParams(location.search);
-  const note   = document.getElementById('sessionNote');
-  if (params.get('reason') === 'expired') {
-    note.textContent = 'Your session expired. Please sign in again.';
-    note.classList.add('show');
+  var params     = new URLSearchParams(location.search);
+  var resetToken = params.get('token') || '';
+
+  // If token present, show reset view; otherwise show request view
+  if (resetToken) {
+    document.getElementById('requestView').style.display = 'none';
+    document.getElementById('resetView').style.display   = '';
   }
 
-  // If already logged in, go to app
-  if (getToken()) window.location.href = 'index.html';
-
-  const emailEl = document.getElementById('email');
-  const pwEl    = document.getElementById('password');
-  const btn     = document.getElementById('loginBtn');
-  const errBox  = document.getElementById('errorBox');
-
-  document.getElementById('togglePw').addEventListener('click', function() {
-    pwEl.type = pwEl.type === 'password' ? 'text' : 'password';
+  // Toggle password visibility
+  ['togglePw1','togglePw2'].forEach(function(id) {
+    var inp = document.getElementById(id.replace('toggle','').replace('Pw','pw').toLowerCase());
+    document.getElementById(id).addEventListener('click', function() {
+      inp.type = inp.type === 'password' ? 'text' : 'password';
+    });
   });
 
-  function showError(msg) {
-    errBox.textContent = msg;
-    errBox.classList.add('show');
-  }
-  function hideError() { errBox.classList.remove('show'); }
+  // ── Request reset ──────────────────────────────────────────────
+  var reqBtn     = document.getElementById('reqBtn');
+  var reqErrBox  = document.getElementById('reqError');
+  var reqOkBox   = document.getElementById('reqSuccess');
 
-  async function doLogin() {
-    hideError();
-    const email    = emailEl.value.trim();
-    const password = pwEl.value;
-    if (!email || !password) { showError('Please enter your email and password.'); return; }
-
-    btn.disabled    = true;
-    btn.textContent = 'Signing in…';
+  reqBtn.addEventListener('click', async function() {
+    reqErrBox.classList.remove('show');
+    reqOkBox.classList.remove('show');
+    var email = (document.getElementById('reqEmail').value || '').trim();
+    if (!email) { reqErrBox.textContent = 'Please enter your email.'; reqErrBox.classList.add('show'); return; }
+    reqBtn.disabled = true; reqBtn.textContent = 'Sending…';
     try {
-      const res = await api('login', { email, password });
+      var res = await api('requestPasswordReset', { email: email });
+      // Always show success to avoid email enumeration
+      reqOkBox.textContent = 'If that email is registered, a reset link has been sent. Check your inbox.';
+      reqOkBox.classList.add('show');
+    } catch(e) {
+      reqErrBox.textContent = 'Connection error. Please try again.';
+      reqErrBox.classList.add('show');
+    } finally {
+      reqBtn.disabled = false; reqBtn.textContent = 'Send reset link';
+    }
+  });
+
+  // ── Set new password ───────────────────────────────────────────
+  var resetBtn    = document.getElementById('resetBtn');
+  var resetErrBox = document.getElementById('resetError');
+  var resetOkBox  = document.getElementById('resetSuccess');
+
+  resetBtn.addEventListener('click', async function() {
+    resetErrBox.classList.remove('show');
+    resetOkBox.classList.remove('show');
+    var pw1 = document.getElementById('pw1').value;
+    var pw2 = document.getElementById('pw2').value;
+    if (!pw1 || pw1.length < 8) { resetErrBox.textContent = 'Password must be at least 8 characters.'; resetErrBox.classList.add('show'); return; }
+    if (pw1 !== pw2)             { resetErrBox.textContent = 'Passwords do not match.'; resetErrBox.classList.add('show'); return; }
+    resetBtn.disabled = true; resetBtn.textContent = 'Setting password…';
+    try {
+      var res = await api('resetPassword', { resetToken: resetToken, password: pw1 });
       if (res && res.success) {
-        setSession({ token: res.token, expires: res.expires, user: res.user });
-        window.location.href = 'index.html';
+        resetOkBox.textContent = 'Password updated! Redirecting to sign in…';
+        resetOkBox.classList.add('show');
+        setTimeout(function() { window.location.href = 'login.html'; }, 2000);
       } else {
-        showError((res && res.error) || 'Sign in failed. Check your credentials.');
+        resetErrBox.textContent = (res && res.error) || 'Reset failed. The link may have expired.';
+        resetErrBox.classList.add('show');
       }
     } catch(e) {
-      showError('Connection error. Please try again.');
+      resetErrBox.textContent = 'Connection error. Please try again.';
+      resetErrBox.classList.add('show');
     } finally {
-      btn.disabled    = false;
-      btn.textContent = 'Sign in';
+      resetBtn.disabled = false; resetBtn.textContent = 'Set new password';
     }
-  }
-
-  btn.addEventListener('click', doLogin);
-  [emailEl, pwEl].forEach(function(el) {
-    el.addEventListener('keydown', function(e) { if (e.key === 'Enter') doLogin(); });
   });
 })();
 </script>
